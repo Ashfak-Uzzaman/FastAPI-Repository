@@ -1,8 +1,18 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse # To tell FastAPI to send the response with the text/html content type so the browser renders it as HTML.
 # uv run fastapi dev main.py
 
-# 'posts' is a list if dictionary
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
+
+# Jinja2Templates: 
+# Jinja2 is a Python templating engine used to generate dynamic HTML pages using variables, loops, conditions, and reusable layouts. 
+# It lets you create dynamic HTML pages by mixing: HTML, Python-like template syntax, data from your backend.
+# Jinja2Templates is a FastAPI/Starlette helper that renders dynamic HTML pages using the Jinja/Jinja2 templating engine.
+
+
+app=FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+
 posts: list[dict] = [
     {
         "id": 1,
@@ -13,6 +23,13 @@ posts: list[dict] = [
     },
     {
         "id": 2,
+        "author": "Ashfak",
+        "title": "Hikmah- new sequre social media app",
+        "content": "Hikmah, a new sequre social media app created by muslims to preserve islamic values.",
+        "date_posted": "May 16, 2026",
+    },
+    {
+        "id": 3,
         "author": "Jane Doe",
         "title": "Python is Great for Web Development",
         "content": "Python is a great language for web development, and FastAPI makes it even better.",
@@ -20,37 +37,16 @@ posts: list[dict] = [
     },
 ]
 
-app=FastAPI()
-
-@app.get("/")
-@app.get("/Assalamualaikum") # Can appear in 2 routes: "/" and "/Assalamualaikum"
-def home():
-    return {"message":"Assalamualaikum! How are you?"}
 
 
-
-@app.get("/hello", include_in_schema=False) # hide this route from the docs (http://127.0.0.1:8000/docs)
-def hello():
-    return {"message":"hello world!!!"}
+@app.get("/home")
+@app.get("/posts") # Can appear in 2 routes: "/" and "/Assalamualaikum"
+def home(request:Request):
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {"posts":posts, "title": "Home"}
+    )
 
 
 
-@app.get("/api/posts")
-def get_posts():
-    return posts
-
-
-# Send the response with the text/html content type so the browser renders it as HTML.
-@app.get("/feed", response_class=HTMLResponse) 
-def show_feed():
-    return f'''
-<h1>{posts[0]['title']}</h1>
-<h4>{posts[0]['author']}</h4>
-<p>{posts[0]['content']}</p>
-
-<br>
-
-<h1>{posts[1]['title']}</h1>
-<h4>{posts[1]['author']}</h4>
-<p>{posts[1]['content']}</p>
-'''
