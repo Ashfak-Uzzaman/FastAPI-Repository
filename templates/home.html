@@ -1,19 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  <h1>Home Page</h1>
+<!-- Template inheritance -->
+{% extends "layout.html" %} 
 
-  {% for post in posts %}
-    <h2>{{ posts.title }}</h2>
-    <h3>{{ post.author }}</h3>
-    <p>{{ post.content }}</p>
-    <br>
-  {% endfor %}
+<!-- The child overrides the content block -->
+{% block content %}
+    {% for post in posts %}
+        <h2>{{ posts.title }}</h2>
+        <h3>{{ post.author }}</h3>
+        <p>{{ post.content }}</p>
+        <br>
+    {% endfor %}
+{% endblock content %}
 
-</body>
-</html>
+<!-- home.html = child template -->
+<!-- The child overrides the content block -->
+<!-- `content` is the name of a template block. -->

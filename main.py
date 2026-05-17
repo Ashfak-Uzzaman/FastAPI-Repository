@@ -25,7 +25,7 @@ posts: list[dict] = [
         "id": 2,
         "author": "Ashfak",
         "title": "Hikmah- new sequre social media app",
-        "content": "Hikmah, a new sequre social media app created by muslims to preserve islamic values.",
+        "content": "Hikmah, a new sequre social media app created by muslims to preserve islamic values by 'Kahf'.",
         "date_posted": "May 16, 2026",
     },
     {
@@ -40,7 +40,7 @@ posts: list[dict] = [
 
 
 @app.get("/home")
-@app.get("/posts") # Can appear in 2 routes: "/" and "/Assalamualaikum"
+@app.get("/posts", include_in_schema=False) # Can appear in 2 routes: "/" and "/Assalamualaikum"
 def home(request:Request):
     return templates.TemplateResponse(
         request,
