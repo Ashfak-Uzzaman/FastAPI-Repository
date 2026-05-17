@@ -1,14 +1,21 @@
 <!-- Template inheritance -->
-{% extends "layout.html" %} 
+{% extends "layout.html" %}
 
 <!-- The child overrides the content block -->
+
 {% block content %}
+<h1>Tech Blog</h1>
+
+<h4>Writers</h4>
+
+<ul>
     {% for post in posts %}
-        <h2>{{ posts.title }}</h2>
-        <h3>{{ post.author }}</h3>
-        <p>{{ post.content }}</p>
-        <br>
+        <li>
+            <!-- url_for('posts') means: “Find the URL/path of the route whose name is posts -->
+            <a href= "{{ url_for('posts') }}"> {{ post.author }} </a>
+        </li>
     {% endfor %}
+</ul>
 {% endblock content %}
 
 <!-- home.html = child template -->
