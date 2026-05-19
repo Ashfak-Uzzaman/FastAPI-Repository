@@ -1,18 +1,13 @@
 # uv run fastapi dev main.py
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+app = FastAPI()
 
-app=FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 templates = Jinja2Templates(directory="templates")
-
-# The line bellow mounts a separate ASGI application (StaticFiles) inside the main FastAPI app.
-app.mount("/static", StaticFiles(directory="static"), name="assets") 
-# "/static" is the URL path
-# Here StaticFiles(directory="static") is a separate ASGI application.
-# name="static" gives the mounted app a route name.
 
 
 posts: list[dict] = [
@@ -41,23 +36,22 @@ posts: list[dict] = [
 
 
 
-@app.get("/")
-async def home(request: Request):
-    return templates.TemplateResponse(
-    request,
-    "home.html",
-    {"request": request}
-)
-    
-    
-    
-
-
-@app.get("/posts", include_in_schema=False, name="posts") 
-def show_posts(request: Request):
+@app.get("/", include_in_schema=False, name="home")
+@app.get("/posts", include_in_schema=False, name="posts")
+def home(request: Request):
     return templates.TemplateResponse(
         request,
-        "posts.html",
-        {"posts": posts, "title": "Posts"}
+        "home.html",
+        {"posts": posts, "title": "Home"},
     )
 
+
+
+# post API endpoint
+@app.get("/api/posts/{post_id}") # {post_id} = Path parameters
+def get_posts(post_id:int): # this type int in parameter ensure automatic type validation in FastAPI. 
+                            # FastAPI uses `Pydantic` for type validation. Default python cannot validate
+    for post in posts:
+        if post.get("id") == post_id:
+            return post
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Opps! Post not found")

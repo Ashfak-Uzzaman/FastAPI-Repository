@@ -1,36 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Home Page</title>
-
-    <!-- CSS -->
-    <link rel="stylesheet"
-          href="{{ url_for('assets', path='css/style.css') }}">
-    <!-- Here 'assets' is the name="assets" of app.mount("/static", StaticFiles(directory="static"), name="assets") in main.py -->
-    <!-- So 'assets' works for "/static". It will see directory="static" in  StaticFiles(directory="static") -->
-    <!-- and here path='css/style.css'. So the url_for will generate href="/static/css/style.css"  URL dynamically istead of hardcoding -->
-
-    <!-- Favicon -->
-    <link rel="icon"
-          href="{{ url_for('assets', path='images/logo.png') }}">
-</head>
-
-<body>
-
-    <h1>Welcome to FastAPI</h1>
-
-    <!-- Image -->
-    <img src="{{ url_for('assets', path='images/logo.png') }}"
-         width="200">
-
-    <button onclick="showMessage()">
-        Click Me
-    </button>
-
-    <!-- JavaScript -->
-    <script src="{{ url_for('assets', path='js/script.js') }}"></script>
-
-</body>
-</html>
-
-
+{% extends "layout.html" %}
+{% block content %}
+  {% for post in posts %}
+    <article class="content-section py-3 px-4 mb-4">
+      <div class="d-flex align-items-start gap-4">
+        <img class="rounded-circle article-img flex-shrink-0"
+             src="{{ url_for('static', path='profile_pics/default.jpg') }}"
+             alt="{{ post.author }}'s profile picture"
+             width="64"
+             height="64"
+             loading="lazy">
+        <div class="flex-grow-1">
+          <div class="article-metadata mb-2">
+            <a class="me-2" href="#">{{ post.author }}</a>
+            <small class="text-body-secondary">{{ post.date_posted }}</small>
+          </div>
+          <h2>
+            <a class="article-title" href="#">{{ post.title }}</a>
+          </h2>
+          <p class="article-content">{{ post.content }}</p>
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+{% endblock content %}
