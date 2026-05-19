@@ -1,23 +1,36 @@
-<!-- Template inheritance -->
-{% extends "layout.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home Page</title>
 
-<!-- The child overrides the content block -->
+    <!-- CSS -->
+    <link rel="stylesheet"
+          href="{{ url_for('assets', path='css/style.css') }}">
+    <!-- Here 'assets' is the name="assets" of app.mount("/static", StaticFiles(directory="static"), name="assets") in main.py -->
+    <!-- So 'assets' works for "/static". It will see directory="static" in  StaticFiles(directory="static") -->
+    <!-- and here path='css/style.css'. So the url_for will generate href="/static/css/style.css"  URL dynamically istead of hardcoding -->
 
-{% block content %}
-<h1>Tech Blog</h1>
+    <!-- Favicon -->
+    <link rel="icon"
+          href="{{ url_for('assets', path='images/logo.png') }}">
+</head>
 
-<h4>Writers</h4>
+<body>
 
-<ul>
-    {% for post in posts %}
-        <li>
-            <!-- url_for('posts') means: “Find the URL/path of the route whose name is posts -->
-            <a href= "{{ url_for('posts') }}"> {{ post.author }} </a>
-        </li>
-    {% endfor %}
-</ul>
-{% endblock content %}
+    <h1>Welcome to FastAPI</h1>
 
-<!-- home.html = child template -->
-<!-- The child overrides the content block -->
-<!-- `content` is the name of a template block. -->
+    <!-- Image -->
+    <img src="{{ url_for('assets', path='images/logo.png') }}"
+         width="200">
+
+    <button onclick="showMessage()">
+        Click Me
+    </button>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('assets', path='js/script.js') }}"></script>
+
+</body>
+</html>
+
+
