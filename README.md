@@ -14,8 +14,8 @@
 ---
 
 ## Step-3 :
-- How to use path parameters to create dynamic routes that can fetch specific resources.
 - Build an API endpoint.
+- How to use path parameters to create dynamic routes that can fetch specific resources.
 - A template page for viewing individual posts. 
 - Add type validation with proper error handling using HTTPException. 
 - Create custom exception handlers that return JSON for API routes and styled HTML pages for browser routes.
