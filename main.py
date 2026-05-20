@@ -1,21 +1,11 @@
-# uv run fastapi dev main.py
 from fastapi import FastAPI, HTTPException, Request, status
-
-from fastapi.exceptions import RequestValidationError # Import validation error class. 
-                                                      # This error happens automatically when request data is invalid
-
-from fastapi.responses import JSONResponse # Import JSONResponse so we can manually return JSON responses
-
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-# Starlette handles many low-level HTTP errors. Using Starlette's exception class catches more HTTP-related exceptions globally
-# These may become Starlette HTTP exceptions:404 Not Found, 405 Method Not Allowed, 403 Forbidden, Route not found.
-# FastAPI itself is built on Starlette.
-from starlette.exceptions import HTTPException as StarletteHTTPException 
-
-
+from schemas import PostCreate, PostResponse # Import the schemas we created earlier
 
 app = FastAPI()
 
@@ -52,8 +42,7 @@ def home(request: Request):
 
 
 @app.get("/posts/{post_id}", include_in_schema=False)
-def post_page(request: Request, post_id: int):  # post_id: int means FastAPI will automatically convert it to integer
-                                                # If conversion fails -> RequestValidationError occurs automatically
+def post_page(request: Request, post_id: int):
     for post in posts:
         if post.get("id") == post_id:
             title = post["title"][:50]
@@ -62,18 +51,34 @@ def post_page(request: Request, post_id: int):  # post_id: int means FastAPI wil
                 "post.html",
                 {"post": post, "title": title},
             )
-            
-    # If loop finishes and no post found: raise HTTPException manually
-    # status_code=404 means "Not Found", detail message will be sent to client
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
 
-@app.get("/api/posts")
+@app.get("/api/posts", response_model=list[PostResponse]) # response_model=list[PostResponse] ensures output is validated.
 def get_posts():
-    return posts
+    # Return all posts — FastAPI automatically converts dict → PostResponse
+    return posts 
 
 
-@app.get("/api/posts/{post_id}")
+@app.post(
+    "/api/posts",
+    response_model=PostResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_post(post: PostCreate): # Accepts only fields defined in PostCreate and Validates input automatically
+    new_id = max(p["id"] for p in posts) + 1 if posts else 1
+    new_post = {
+        "id": new_id,
+        "author": post.author,
+        "title": post.title,
+        "content": post.content,
+        "date_posted": "April 23, 2025",
+    }
+    posts.append(new_post)
+    return new_post
+
+
+@app.get("/api/posts/{post_id}", response_model=PostResponse)
 def get_post(post_id: int):
     for post in posts:
         if post.get("id") == post_id:
@@ -81,34 +86,20 @@ def get_post(post_id: int):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
 
-
-################## --- Exception Handler --- ##################
-'''
-* FastAPI automatically raises errors (StarletteHTTPException, RequestValidationError etc).
-* funnctions catche errors ( general_http_exception_handler, validation_exception_handler etc).
-* functions execute and return something that is programmed.
-
-'''
-
-
-# GLOBAL HTTP EXCEPTION HANDLER
-# Register a global exception handler
-# This handles ALL Starlette/FastAPI HTTP exceptions
 @app.exception_handler(StarletteHTTPException)
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
-    
-     # Determine error message
-    message = exception.detail if exception.detail else "An error occurred. Please check your request and try again."
+    message = (
+        exception.detail
+        if exception.detail
+        else "An error occurred. Please check your request and try again."
+    )
 
-    # Return JSON response for API requests
-    # Check if request URL starts with "/api", then return in JSON format
     if request.url.path.startswith("/api"):
         return JSONResponse(
             status_code=exception.status_code,
             content={"detail": message},
         )
-        
-    # else request is NOT API request: return HTML error page, UI response that shows error to general user
+
     return templates.TemplateResponse(
         request,
         "error.html",
@@ -120,23 +111,6 @@ def general_http_exception_handler(request: Request, exception: StarletteHTTPExc
         status_code=exception.status_code,
     )
 
-
-# VALIDATION ERROR HANDLER
-
-# Register handler for validation errors
-#
-# This exception occurs automatically when:
-#
-# - Wrong datatype
-# - Missing required fields
-# - Invalid query/path/body parameters
-#
-# Example:
-# /api/posts/abc
-#
-# Here:
-# post_id should be int
-# but "abc" is string
 
 @app.exception_handler(RequestValidationError)
 def validation_exception_handler(request: Request, exception: RequestValidationError):
@@ -156,4 +130,3 @@ def validation_exception_handler(request: Request, exception: RequestValidationE
         },
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
     )
-

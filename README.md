@@ -19,3 +19,8 @@
 - A template page for viewing individual posts. 
 - Add type validation with proper error handling using HTTPException. 
 - Create custom exception handlers that return JSON for API routes and styled HTML pages for browser routes.
+
+---
+
+## Step-4 :
+- Pydantic schemas to validate API requests and responses
