@@ -24,3 +24,8 @@
 
 ## Step-4 :
 - Pydantic schemas to validate API requests and responses
+
+---
+
+## Step-5
+- Basic CRUD using PostgreSQL and SQLAlchemy by [Telusko](https://youtube.com/playlist?list=PLsyeobzWxl7qF4ASwCZZDXor_Y0YJ3Qfc&si=Zv3I2EwstaBCgkd8) (Navin Reddy)
