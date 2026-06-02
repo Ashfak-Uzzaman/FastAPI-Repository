@@ -1,194 +1,231 @@
-from fastapi import Depends, FastAPI, HTTPException
-import database_models
-from models import Product
-from database import engine, session
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-database_models.Base.metadata.create_all(bind=engine)
-'''
-# database_models.Base
-# ---------------------
-# "Base" is the parent class created using:
-#
-# Base = declarative_base()
-#
-# All database model classes inherit from this Base.
-#
-# Example:
-#
-# class Product(Base):
-#     ...
-#
-# SQLAlchemy stores information about ALL tables/models
-# inside Base.metadata
+import models
+from database import Base, engine, get_db
+from schemas import PostCreate, PostResponse, UserCreate, UserResponse # Import the schemas we created earlier
 
-
-
-# .metadata
-# ---------------------
-# metadata contains all collected table information.
-#
-# It knows:
-#   - table names
-#   - column names
-#   - data types
-#   - primary keys
-#   - indexes
-#
-# In your case it contains information about:
-#
-# Table: products
-# Columns:
-#   id
-#   name
-#   description
-#   price
-#   quantity
-
-
-
-# .create_all(...)
-# ---------------------
-# create_all() tells SQLAlchemy:
-#
-# "Create all database tables that do not already exist."
-#
-# SQLAlchemy reads all table definitions from Base.metadata
-# and generates SQL CREATE TABLE queries automatically.
-#
-# Example internally:
-#
-# CREATE TABLE products (
-#     id INTEGER PRIMARY KEY,
-#     name VARCHAR,
-#     description VARCHAR,
-#     price FLOAT,
-#     quantity INTEGER
-# );
-
-
-
-# bind=engine
-# ---------------------
-# bind means:
-#
-# "Use this engine/database connection."
-#
-# engine was created earlier using:
-#
-# engine = create_engine(db_url)
-#
-# So SQLAlchemy knows WHICH database
-# it should create tables inside.
-
-
-
-# Final Meaning of this whole line:
-# ---------------------
-# Read all model/table definitions from Base.metadata and create those tables in the database using the provided engine connection.
-database_models.Base.metadata.create_all(bind=engine)
-'''
+Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI()
 
-@app.get("/")
-def greet():
-    return "Hello world"
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
-def get_db():
-    db = session()
-    try:
-        yield db # `yield` temporarily gives/provides the database session to FastAPI routes.
-                 # `yield` pauses the function here temporarily. The function does NOT completely end yet. 
-                 # FastAPI uses the db session first, then execution comes back below to finally.
-    finally:
-        db.close() # Close the database session. This releases database resources/connections.
-
-# list of products with 4 products like phones, laptops, pens, tables
-products = [
-    Product(id=1, name="Phone", description="A smartphone", price=699.99, quantity=50),
-    Product(id=2, name="Laptop", description="A powerful laptop", price=999.99, quantity=30),
-    Product(id=3, name="Pen", description="A blue ink pen", price=1.99, quantity=100),
-    Product(id=4, name="Table", description="A wooden table", price=199.99, quantity=20),
-]
-
-def init_db():
-    db = session()
-
-    existing_count = db.query(database_models.Product).count()
-
-    if existing_count == 0:
-        for product in products:
-            db.add(database_models.Product(**product.model_dump()))
-        db.commit()
-        print("Database initialized with sample products.")
-        
-    db.close()
-
-init_db() 
-
-# This function will execute whenever the "/products/" endpoint is called.
-@app.get("/products/")
-def get_all_products(db: Session = Depends(get_db)): # parameter 'db' will contain a database "Session" object and it depends upon `get_db()` function. 
-                                                     # Depends() is FastAPI's dependency injection system.
-                                                     # FastAPI will: 1. call get_db(), 
-                                                     # 2. get database session from yield, 
-                                                     # 3. pass that session into db, 
-                                                     # 4. automatically close it later.
-    products = db.query(database_models.Product).all()
-    
-    # query() starts a database query.
-    # database_models.Product is the SQLAlchemy 'Product' model/table.
-    # .all() executes the query
-    # and returns ALL rows from the table.
-    # Internally SQLAlchemy generates SQL like: """ SELECT * FROM products; """"
-    # FastAPI automatically converts Python objects into JSON response and Client/user receives product list as JSON.
-    
-    return products
+templates = Jinja2Templates(directory="templates")
 
 
-@app.get("/products/{product_id}")
-def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-    # filter() adds a WHERE condition. Example: WHERE id = 5
-    # .first() = return ONLY the first matching row.
-    # If no row exists, the query returns None
-    # Internally SQL looks similar to: """ SELECT * FROM products WHERE id = 5 LIMIT 1 """
-    if product:
-        return product
-    
-    return {"error": "Product not found"}
+'''
+## -- Reusable dependency aliases -- ##
+
+# Define once
+DBSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+# Reuse cleanly — no repetition
+def home(db: DBSession): ...
+def profile(db: DBSession, user: CurrentUser): ...
+def dashboard(db: DBSession, user: CurrentUser): ...
+'''
+
+@app.get("/", include_in_schema=False, name="home")
+@app.get("/posts", include_in_schema=False, name="posts")
+def home(request: Request, db: Annotated[Session, Depends(get_db)]): # Depends(get_db) = Dependency injection: inject a Session by running get_db
+    result = db.execute(select(models.Post))
+    posts = result.scalars().all()
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {"posts": posts, "title": "Home"},
+    )
 
 
-# Create data -> put
-@app.post("/products/")
-def create_product(product: Product, db: Session = Depends(get_db)):
-    db.add(database_models.Product(**product.model_dump()))
-    db.commit() # commit() tells SQLAlchemy: "Execute all pending INSERT/UPDATE/DELETE queries and permanently save them."
-    return {"message": "Product created successfully", "product": product}
+@app.get("/posts/{post_id}", include_in_schema=False)
+def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    if post:
+        title = post.title[:50]
+        return templates.TemplateResponse(
+            request,
+            "post.html",
+            {"post": post, "title": title},
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
 
-# Update data -> put
-@app.put("/products/{product_id}")
-def update_product(product_id: int, product: Product, db: Session = Depends(get_db)):
-    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    db_product.name = product.name
-    db_product.description = product.description
-    db_product.price = product.price
-    db_product.quantity = product.quantity
-    db.commit() 
-    db.refresh(db_product) # reloads the object data from the database again. Fetch the latest version of this row from the database and update this Python object.
-    return {"message": "Product updated successfully", "product": db_product}
+@app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
+def user_posts_page(
+    request: Request,
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    posts = result.scalars().all()
+    return templates.TemplateResponse(
+        request,
+        "user_posts.html",
+        {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
+    )
 
 
-@app.delete("/products/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
-    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    db.delete(db_product)
+@app.post(
+    "/api/users",
+    response_model=UserResponse, # response_model is used to define, filter, validate, and document the data returned by an API endpoint. 
+                                 # It securely acts as a gateway, ensuring your API never accidentally leaks sensitive data like hashed passwords or internal database IDs.
+                                 # response_model ensures returned output is validated.
+                                 # When we return new_user from the function, pydentic will automatically convert UserResponse
+
+    status_code=status.HTTP_201_CREATED,
+)
+def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.username == user.username),
+    )
+    existing_user = result.scalars().first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists",
+        )
+    result = db.execute(
+        select(models.User).where(models.User.email == user.email),
+    )
+    existing_email = result.scalars().first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+    new_user = models.User(
+        username=user.username,
+        email=user.email,
+    )
+    db.add(new_user)
     db.commit()
-    return {"message": "Product deleted successfully"}
+    db.refresh(new_user)
+    return new_user
+
+
+@app.get("/api/users/{user_id}", response_model=UserResponse)
+def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id),
+    )
+    user = result.scalars().first()
+    if user:
+        return user
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+
+@app.get("/api/users/{user_id}/posts", response_model=list[PostResponse])
+def get_user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    posts = result.scalars().all()
+    return posts
+
+
+@app.get("/api/posts", response_model=list[PostResponse])
+def get_posts(db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post))
+    posts = result.scalars().all()
+    return posts
+
+
+@app.post(
+    "/api/posts",
+    response_model=PostResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_post(post: PostCreate, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == post.user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    new_post = models.Post(
+        title=post.title,
+        content=post.content,
+        user_id=post.user_id,
+    )
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
+
+
+@app.get("/api/posts/{post_id}", response_model=PostResponse)
+def get_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    if post:
+        return post
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+
+@app.exception_handler(StarletteHTTPException)
+def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
+    message = (
+        exception.detail
+        if exception.detail
+        else "An error occurred. Please check your request and try again."
+    )
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=exception.status_code,
+            content={"detail": message},
+        )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "status_code": exception.status_code,
+            "title": exception.status_code,
+            "message": message,
+        },
+        status_code=exception.status_code,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request: Request, exception: RequestValidationError):
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": exception.errors()},
+        )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "status_code": status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "title": status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "message": "Invalid request. Please check your input and try again.",
+        },
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    )

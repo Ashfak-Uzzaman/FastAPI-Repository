@@ -1,89 +1,87 @@
-# SQLAlchemy is a comprehensive, open-source SQL toolkit and Object-Relational Mapper (ORM) for the Python.
-from sqlalchemy import create_engine # Engine means: the main connection manager between Python and the database
+# Import create_engine function from SQLAlchemy
+# create_engine() is used to create a connection between Python and the database
+from sqlalchemy import create_engine 
 
-from sqlalchemy.orm import sessionmaker # `sessionmaker` is used to create "Session" factory (class)  for Session objects. 
-                                        # Session is used to talk with the database (insert, update, delete, read)
+
+# Import DeclarativeBase and sessionmaker from SQLAlchemy ORM
+# DeclarativeBase -> used to create a base class for database models/tables
+# sessionmaker -> used to create database session objects
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
 # Database URL / connection string
-# This tells SQLAlchemy:
-#   - which database we are using
-#   - username
-#   - password
-#   - host
-#   - port
-#   - database name
-#
-# Format:
-# postgresql://username:password@host:port/database_name
-#
-# Here:
-#   postgresql -> database type
-#   postgres   -> username
-#   0000       -> password
-#   localhost  -> database server is running on this same computer
-#   5432       -> PostgreSQL default port
-#   ashfakdb    -> database name
-
-database_name = "ashfakdb"
-password = "1234"
-db_url = f"postgresql://postgres:{password}@localhost:5432/{database_name}"
+# "sqlite:///./blog.db" means:
+# sqlite      -> use SQLite database
+# ///         -> relative file path
+# ./blog.db   -> create/find blog.db file in current project folder
+SQLALCHEMY_DATABASE_URL = "sqlite:///./blog.db"
 
 
-#------------------------------------------------------------#
-# Create the Engine (connection manager) object
-#
-# Engine is responsible for:
-#   - connecting Python with PostgreSQL
-#   - managing database connections
-#   - sending SQL queries
-#
-# This does NOT immediately connect permanently to the DB. It prepares everything needed for connection.
-engine = create_engine(db_url)
+# Create the database engine
+# Engine is the main object that manages communication with the database
+engine = create_engine(
+
+    # Pass the database URL to the engine
+    SQLALCHEMY_DATABASE_URL,
+
+    # Extra connection settings for SQLite
+    connect_args={"check_same_thread": False},
+    
+    # SQLite normally allows only the same thread that created
+    # the connection to use it.
+    # FastAPI handles requests using multiple threads,
+    # so we disable this restriction by setting False.
+)
 
 
-# -------------------------------------------------------------#
-# Create a "Session" factory (class)
-# Every time we connect to something, it is a session.
-# If we connect to a server that's one session.
-# If we connect to a database that's one session.
+# This is a factory to create a Session. A Session is essentially a transaction with the database.
+# sessionmaker() does NOT create a session immediately.
+# Instead, it creates a "session generator/factory".
+# Later, SessionLocal() will create actual session objects.
+SessionLocal = sessionmaker(
 
-# `sessionmaker()` creates "Session" factory (class)  for Session objects. 
-# "Session" = connection/conversation with database.
-# Later we can create actual sessions (`Session object`) like: db = session()
-session = sessionmaker(
+    # autocommit=False means:
+    # changes are NOT automatically saved to the database
+    # You must manually call:
+    # db.commit()
     autocommit=False,
+
+    # autoflush=False means:
+    # SQLAlchemy will NOT automatically send changes
+    # to the database before queries
     autoflush=False,
+
+    # Bind this session factory to the engine
+    # so all sessions know which database to use
     bind=engine
 )
 
-# Parameters:
-#
-# autocommit=False
-# ----------------
-# Changes are NOT automatically saved to the database.
-# We must manually call:
-#
-#   db.commit()
-#
-# This is safer because we control when data is saved.
-#
-#
-# autoflush=False
-# ----------------
-# SQLAlchemy will NOT automatically send pending changes to the database before every query.
-# We manually control when data is flushed/sent.
-#   db.add(new_user) # Nothing sent yet
-#   db.flush()   # NOW send to DB manually
-#
-# or
-#
-#   db.commit()  # commit also performs flush first
-#
-# bind=engine
-# ----------------
-# Attach this Session factory to our database engine.
-# Meaning:
-# Sessions created from `session` will use this engine
-# to communicate with PostgreSQL.
 
+# Create a Base class for all database models
+# Every table/model class will inherit from this Base class
+# Example:
+# class User(Base):
+#     ...
+class Base(DeclarativeBase):
+
+    # pass means:
+    # no extra code inside this class for now
+    pass
+
+
+# Dependency function for FastAPI
+# Used to get a database session for each request
+def get_db():
+
+    # Create a new database session using SessionLocal()
+    # "with" automatically closes the session after use
+    with SessionLocal() as db:
+
+        # yield sends the db session to FastAPI route functions
+        # Example:
+        # def route(db: Session = Depends(get_db))
+        yield db
+
+        # After request finishes,
+        # the session is automatically closed
+        

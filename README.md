@@ -29,3 +29,7 @@
 
 ## Step-5
 - Basic CRUD using PostgreSQL and SQLAlchemy by [Telusko](https://youtube.com/playlist?list=PLsyeobzWxl7qF4ASwCZZDXor_Y0YJ3Qfc&si=Zv3I2EwstaBCgkd8) (Navin Reddy)
+- SQLite database and SQLAlchemy models with relationships. 
+- Separated SQLAlchemy models and Pydantic schemas.
+- FastAPI's dependency injection to manage database sessions.
+- **CREATE** operation (CREATE user and post)
