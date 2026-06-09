@@ -72,6 +72,13 @@ class UserResponse(UserBase):
     image_path: str
 
 
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=1, max_length=50)
+    email: EmailStr | None = Field(default=None, max_length=120)
+    image_file: str | None = Field(default=None, min_length=1, max_length=200)
+
+
 # ==========================================================
 # POST MODELS
 # ==========================================================
@@ -94,6 +101,10 @@ class PostCreate(PostBase):
 
     user_id: int # TEMPORARY. Will use Auth. id will be get automatically later.
    
+
+class PostUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    content: str | None = Field(default=None, min_length=1)
 
 
 # Used when returning a post to the client.

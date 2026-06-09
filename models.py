@@ -80,15 +80,23 @@ class User(Base):
         default=None, # default=None means default value is NULL
     )
 
-
-    # -- Relationship with Post table -- #
-    #
-    # One user can have many posts. So posts will contain a list of Post objects
-    #
+    # -- One to Many relationship -- #
+    # -- Relationship with Post table. One user can have many posts. So posts will contain a list of Post objects.
     # `back_populates="author"` connects this relationship with Post.author relationship
+    # relationship() creates the connection in Python objects, not in database. It runs inside RAM.
     posts: Mapped[list[Post]] = relationship(
-        back_populates="author"
+        "Post",
+        back_populates="author",
+        cascade="all, delete-orphan",
     )
+    
+    # -- Relationship (User object points to Post objects) -- #
+    '''
+    |====|------> |Post-1|
+    |User|------> |Post-2| 
+    |====|------> |Post-3|
+    '''
+    # cascade="all, delete-orphan" destroys all Post objects related to the specific User Object
 
 
     # @property allows calling this method like an attribute
@@ -137,17 +145,10 @@ class Post(Base):
     )
 
 
-    # -- Foreign key column -- #
-    #
-    # This connects posts table with users table
-    #
-    # ForeignKey("users.id")
-    # means:
-    # user_id references users table's id column
-    #
-    # nullable=False means every post must belong to a user
-    #
-    # index=True improves searching/filtering speed
+    # -- Foreign key column -- This connects posts table with users table. 
+    # ForeignKey() creates the connection in the database.
+    # `ForeignKey("users.id")` means: user_id references users table's id column
+    # nullable=False means every post must belong to a user. index=True improves searching/filtering speed.
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
         nullable=False,
@@ -163,9 +164,13 @@ class Post(Base):
     )
 
 
-    #  -- Relationship back to User table -- #
-    #
-    # Each post has one author/user
-    #
+    # -- Many to One relationship -- #
+    #  -- Relationship back to User table. Each post has one author/user
     # back_populates="posts" connects with User.posts relationship
-    author: Mapped[User] = relationship(back_populates="posts")
+    author: Mapped[User] = relationship("User",back_populates="posts")
+    
+    '''
+    |====| <-------|Post-1|
+    |User| <-------|Post-2| 
+    |====| <-------|Post-3|
+    '''

@@ -32,4 +32,5 @@
 - SQLite database and SQLAlchemy models with relationships. 
 - Separated SQLAlchemy models and Pydantic schemas.
 - FastAPI's dependency injection to manage database sessions.
-- **CREATE** operation (CREATE user and post)
+- `relationship()` - explained.
+- **CREATE**, **Update** and **Delete** *(CRUD)* operations.
