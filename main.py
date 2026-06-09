@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
-from schemas import PostCreate, PostResponse, UserCreate, UserResponse , UserUpdate # Import the schemas we created earlier
+from schemas import PostCreate, PostResponse, UserCreate, UserResponse , UserUpdate, PostUpdate # Import the schemas we created earlier
 
 Base.metadata.create_all(bind=engine)
 
@@ -315,8 +315,40 @@ def update_post_partial(
             status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
         )
 
+    # ------------------------------------------------
+    # GET ONLY PROVIDED FIELDS
+    # ------------------------------------------------
+
+    # model_dump(exclude_unset=True) : Convert Pydantic model → dictionary
+    #
+    # exclude_unset=True means : only include fields that user actually sent
+    #
+    # Example request:
+    # {
+    #   "title": "New title"
+    # }
+    #
+    # Result:
+    # {
+    #   "title": "New title"
+    # }
+    #
+    # NOT included: description, content, etc.
     update_data = post_data.model_dump(exclude_unset=True)
+    
+    
+    # UPDATE FIELDS DYNAMICALLY
     for field, value in update_data.items():
+        
+        # Dynamically sets attribute on object
+        #
+        # Example:
+        #
+        # field = "title"
+        # value = "Hello"
+        #
+        # becomes:
+        # post.title = "Hello"
         setattr(post, field, value)
 
     db.commit()
