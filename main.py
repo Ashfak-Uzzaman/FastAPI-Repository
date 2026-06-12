@@ -342,14 +342,18 @@ def update_post_partial(
         
         # Dynamically sets attribute on object
         #
-        # Example:
+        # setattr(object, attribute_name, value)
+        # 1. object = The object whose attribute you want to set or update.
+        # 2. attribute_name = The name of the attribute you want to set. It must be a string.
+        # 3. value = The new value you want to assign to the attribute.
         #
+        # Example:
         # field = "title"
         # value = "Hello"
         #
         # becomes:
         # post.title = "Hello"
-        setattr(post, field, value)
+        setattr(post, field, value) 
 
     db.commit()
     db.refresh(post)
