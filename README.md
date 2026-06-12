@@ -34,3 +34,12 @@
 - FastAPI's dependency injection to manage database sessions.
 - `relationship()` - explained.
 - **CREATE**, **Update** and **Delete** *(CRUD)* operations.
+
+---
+
+## Step-6
+- Converting App to Asynchronous.
+- Use async SQLAlchemy with aiosqlite. 
+- Converting all of our routes to use async/await. 
+- Handling eager loading for relationships. 
+- Updating our exception handlers.
