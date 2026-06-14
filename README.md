@@ -43,3 +43,11 @@
 - Converting all of our routes to use async/await. 
 - Handling eager loading for relationships. 
 - Updating our exception handlers.
+
+---
+
+## Step-7
+- Organizing Routes into Modules with APIRouter.
+
+---
+
