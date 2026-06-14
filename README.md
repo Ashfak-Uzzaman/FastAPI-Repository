@@ -51,3 +51,7 @@
 
 ---
 
+## Step-8
+- Connecting JavaScript (Frontend) to API
+
+---

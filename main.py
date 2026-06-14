@@ -2,14 +2,16 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
-
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload # For Eager loading (optimized)
+from sqlalchemy.orm import selectinload  # For Eager loading (optimized)
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
@@ -20,7 +22,7 @@ from routers import post, users
 @asynccontextmanager  # Marks this function as an asynchronous context manager. FastAPI can use it to manage startup and shutdown events.
 async def lifespan(
     _app: FastAPI,
-):  
+):
     """
     When the app starts, open the database, create any missing tables, then start serving requests.
     When the app stops, close the database engine and clean up resources.
@@ -43,19 +45,20 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 
 templates = Jinja2Templates(directory="templates")
 
-app.include_router(users.router, prefix="/api/users", tags=["users"]) # `tags` organize endpoints under the "posts" group in API docs. Improves Swagger UI (/docs) and ReDoc (/redoc) readability. Does not affect routing, URLs, or endpoint behavior. It's primarily documentation metadata.
-app.include_router(post.router, prefix="api/posts", tags=["posts"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(post.router, prefix="/api/posts", tags=["posts"])
 
 
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
-async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]): 
+async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]):
+
     result = await db.execute(
-        select(
-            models.Post
-        ).options(  # .options(...) When fetching posts, also do something special with their related data
-            selectinload(models.Post.author) # selectinload() tells SQLAlchemy: "Load the related authors in advance using a separate optimized query, so extra queries are not needed later."
-        ),
+        select(models.Post)
+        .options(selectinload(models.Post.author))
+        .order_by(models.Post.date_posted.desc()), # Order post by date. Sorting in backend is efficient because database operation is faster then JS.
+                                                   # Note  models.Post.date_posted` is not a standard Python string or datetime object; 
+                                                   # it is a SQLAlchemy Column object. So we can access a special function desc()
     )
     posts = result.scalars().all()
     return templates.TemplateResponse(
@@ -65,27 +68,30 @@ async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]):
     )
 
 
-@app.get("/post/{post_id}",include_in_schema=False)
-async def post_page(request:Request, post_id:int, db:Annotated[AsyncSession, Depends(get_db)],):
+@app.get("/post/{post_id}", include_in_schema=False)
+async def post_page(
+    request: Request,
+    post_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     result = await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
         .where(models.Post.id == post_id),
     )
-    
+
     post = result.scalar().first()
-    
+
     if post:
-        title=post.title[:50]
+        title = post.title[:50]
         return templates.TemplateResponse(
             request,
             "post.html",
-            {"post":post,"title":title},
+            {"post": post, "title": title},
         )
-        
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Post not found")
 
-    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
 
 @app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
 async def user_posts_page(
@@ -103,7 +109,8 @@ async def user_posts_page(
     result = await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
-        .where(models.Post.user_id == user_id),
+        .where(models.Post.user_id == user_id)
+        .order_by(models.Post.date_posted.desc()), # sort posts by date
     )
     posts = result.scalars().all()
     return templates.TemplateResponse(
@@ -111,7 +118,6 @@ async def user_posts_page(
         "user_posts.html",
         {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
     )
-
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -158,6 +164,3 @@ async def validation_exception_handler(
         },
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
     )
-    
-    
-    
