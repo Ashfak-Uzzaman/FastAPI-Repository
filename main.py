@@ -2,10 +2,8 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.exception_handlers import (
-    http_exception_handler,
-    request_validation_exception_handler,
-)
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,7 +20,7 @@ from routers import post, users
 @asynccontextmanager  # Marks this function as an asynchronous context manager. FastAPI can use it to manage startup and shutdown events.
 async def lifespan(
     _app: FastAPI,
-):  # _app receives the FastAPI application instance. The underscore means “I am not using this parameter directly.”
+):  
     """
     When the app starts, open the database, create any missing tables, then start serving requests.
     When the app stops, close the database engine and clean up resources.
@@ -45,17 +43,13 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 
 templates = Jinja2Templates(directory="templates")
 
-app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(users.router, prefix="/api/users", tags=["users"]) # `tags` organize endpoints under the "posts" group in API docs. Improves Swagger UI (/docs) and ReDoc (/redoc) readability. Does not affect routing, URLs, or endpoint behavior. It's primarily documentation metadata.
 app.include_router(post.router, prefix="api/posts", tags=["posts"])
 
 
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
-async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]): # Note Python itself does nothing with it unless some library reads the annotation and executes the callable.
-                                                                                # Python does NOT: read Annotated, call Depends, call get_db
-                                                                                # Instead: FastAPI inspects the function signature,  sees Annotated[..., Depends(get_db)], 
-                                                                                # then FastAPI decides to execute get_db
-
+async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]): 
     result = await db.execute(
         select(
             models.Post
@@ -164,3 +158,6 @@ async def validation_exception_handler(
         },
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
     )
+    
+    
+    
